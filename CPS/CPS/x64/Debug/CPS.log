@@ -1,0 +1,29 @@
+﻿  main.cpp
+c:\users\albin\documents\github\combinatorial-problem-solving\cps\deps\include\gecode\support\exception.hpp(46): warning C4275: non dll-interface class 'std::exception' used as base for dll-interface class 'Gecode::Exception'
+  c:\program files (x86)\microsoft visual studio 14.0\vc\include\vcruntime_exception.h(43): note: see declaration of 'std::exception'
+  c:\users\albin\documents\github\combinatorial-problem-solving\cps\deps\include\gecode\support\exception.hpp(46): note: see declaration of 'Gecode::Exception'
+c:\users\albin\documents\github\combinatorial-problem-solving\cps\deps\include\gecode\search.hh(312): warning C4251: 'Gecode::Search::CutoffRandom::rnd': class 'Gecode::Support::LinearCongruentialGenerator<2147483647,48271,44488,3399>' needs to have dll-interface to be used by clients of class 'Gecode::Search::CutoffRandom'
+  c:\users\albin\documents\github\combinatorial-problem-solving\cps\deps\include\gecode\support\random.hpp(123): note: see declaration of 'Gecode::Support::LinearCongruentialGenerator<2147483647,48271,44488,3399>'
+c:\users\albin\documents\github\combinatorial-problem-solving\cps\deps\include\gecode\search.hh(670): warning C4251: 'Gecode::Search::Builder::opt': class 'Gecode::Search::Options' needs to have dll-interface to be used by clients of class 'Gecode::Search::Builder'
+  c:\users\albin\documents\github\combinatorial-problem-solving\cps\deps\include\gecode\search.hh(446): note: see declaration of 'Gecode::Search::Options'
+c:\users\albin\documents\github\combinatorial-problem-solving\cps\deps\include\gecode\search\meta\dead.hh(47): warning C4251: 'Gecode::Search::Meta::Dead::stat': class 'Gecode::Search::Statistics' needs to have dll-interface to be used by clients of class 'Gecode::Search::Meta::Dead'
+  c:\users\albin\documents\github\combinatorial-problem-solving\cps\deps\include\gecode\search.hh(140): note: see declaration of 'Gecode::Search::Statistics'
+c:\users\albin\documents\github\combinatorial-problem-solving\cps\deps\include\gecode\int.hh(4725): warning C4275: non dll-interface class 'Gecode::TracerBase' used as base for dll-interface class 'Gecode::Tracer<Gecode::Int::IntView>'
+  c:\users\albin\documents\github\combinatorial-problem-solving\cps\deps\include\gecode\kernel\tracer.hpp(41): note: see declaration of 'Gecode::TracerBase'
+  c:\users\albin\documents\github\combinatorial-problem-solving\cps\deps\include\gecode\int.hh(4714): note: see declaration of 'Gecode::Tracer<Gecode::Int::IntView>'
+c:\users\albin\documents\github\combinatorial-problem-solving\cps\deps\include\gecode\int.hh(4761): warning C4275: non dll-interface class 'Gecode::TracerBase' used as base for dll-interface class 'Gecode::Tracer<Gecode::Int::BoolView>'
+  c:\users\albin\documents\github\combinatorial-problem-solving\cps\deps\include\gecode\kernel\tracer.hpp(41): note: see declaration of 'Gecode::TracerBase'
+  c:\users\albin\documents\github\combinatorial-problem-solving\cps\deps\include\gecode\int.hh(4750): note: see declaration of 'Gecode::Tracer<Gecode::Int::BoolView>'
+c:\users\albin\documents\github\combinatorial-problem-solving\cps\deps\include\gecode\set.hh(1717): warning C4275: non dll-interface class 'Gecode::TracerBase' used as base for dll-interface class 'Gecode::Tracer<Gecode::Set::SetView>'
+  c:\users\albin\documents\github\combinatorial-problem-solving\cps\deps\include\gecode\kernel\tracer.hpp(41): note: see declaration of 'Gecode::TracerBase'
+  c:\users\albin\documents\github\combinatorial-problem-solving\cps\deps\include\gecode\set.hh(1706): note: see declaration of 'Gecode::Tracer<Gecode::Set::SetView>'
+c:\users\albin\documents\github\combinatorial-problem-solving\cps\deps\include\gecode\float.hh(1904): warning C4275: non dll-interface class 'Gecode::TracerBase' used as base for dll-interface class 'Gecode::Tracer<Gecode::Float::FloatView>'
+  c:\users\albin\documents\github\combinatorial-problem-solving\cps\deps\include\gecode\kernel\tracer.hpp(41): note: see declaration of 'Gecode::TracerBase'
+  c:\users\albin\documents\github\combinatorial-problem-solving\cps\deps\include\gecode\float.hh(1893): note: see declaration of 'Gecode::Tracer<Gecode::Float::FloatView>'
+c:\users\albin\documents\github\combinatorial-problem-solving\cps\cps\main.cpp(44): warning C4244: '+=': conversion from 'double' to 'int', possible loss of data
+c:\users\albin\documents\github\combinatorial-problem-solving\cps\cps\main.cpp(54): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
+c:\users\albin\documents\github\combinatorial-problem-solving\cps\cps\main.cpp(55): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
+c:\users\albin\documents\github\combinatorial-problem-solving\cps\cps\main.cpp(140): warning C4800: 'int': forcing value to bool 'true' or 'false' (performance warning)
+c:\users\albin\documents\github\combinatorial-problem-solving\cps\cps\main.cpp(277): warning C4244: '+=': conversion from 'double' to 'int', possible loss of data
+  CPS.vcxproj -> C:\Users\Albin\Documents\GitHub\Combinatorial-Problem-Solving\CPS\x64\Debug\CPS.exe
+  CPS.vcxproj -> C:\Users\Albin\Documents\GitHub\Combinatorial-Problem-Solving\CPS\x64\Debug\CPS.pdb (Partial PDB)
