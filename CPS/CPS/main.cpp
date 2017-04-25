@@ -18,7 +18,7 @@ protected:
 
 	IntVarArray treeNodes;
 	BoolVarArray treeEval;
-	BoolVarArray treeEvalHelper;
+	BoolVarArray treeEvalInverse;
 
 	BoolVarArray treeNOR;
 	BoolVarArray treeZero;
@@ -48,7 +48,7 @@ public:
 
 		treeNodes = IntVarArray(*this, treeSize, -1, numberOfInputs);
 		treeEval = BoolVarArray(*this, treeSize * truthTable.size(), 0, 1);
-		treeEvalHelper = BoolVarArray(*this, treeSize * truthTable.size(), 0, 1);
+		treeEvalInverse = BoolVarArray(*this, treeSize * truthTable.size(), 0, 1);
 		
 		// Two boolean trees for whether a node is NOR or zero.
 		treeNOR = BoolVarArray(*this, treeSize, 0, 1);
@@ -114,9 +114,9 @@ public:
 				if (node < treeSize / 2)
 				{
 					// Constraint: The inverseEvaluate works like on OR. If either of the two children left & right are true so are the parent.
-					rel(*this, inverseEvaluate(right, j), BOT_OR, inverseEvaluate(left, j), inverseEvaluate(node, j));
+					rel(*this, evaluate(right, j), BOT_OR, evaluate(left, j), inverseEvaluate(node, j));
 					// Constraint: Then since "evaluate == !inverseEvaluate" we get a NOR.
-					//rel(*this, evaluate(node, j), IRT_NQ, inverseEvaluate(node, j), imp(treeNOR[node]));
+					rel(*this, evaluate(node, j), IRT_NQ, inverseEvaluate(node, j), imp(treeNOR[node]));
 				}
 			}
 			#pragma endregion
@@ -126,8 +126,9 @@ public:
 			rel(*this, treeNodes[node], IRT_EQ, 0, treeZero[node]);
 			// Constraint: If the node is a 0, make sure it evaluates to 0.
 			for (int j = 0; j < truthTable.size(); j++)
-				rel(*this, inverseEvaluate(node, j), IRT_EQ, 1, imp(treeZero[node]));
-				//rel(*this, evaluate(node, j), IRT_EQ, 0, imp(treeZero[node]));
+			{
+				rel(*this, evaluate(node, j), IRT_EQ, 0, imp(treeZero[node]));
+			}
 			#pragma endregion
 
 			#pragma region CONSTRAINTS FOR NODES = 1, 2, 3...
@@ -143,8 +144,7 @@ public:
 				{
 					bool inputEval = allPossibleInputs[truthTableEntry][input - 1];
 					// Constraint: Make sure that the treeEval gets the correct value from the input-node.
-					//rel(*this, evaluate(node, truthTableEntry), IRT_EQ, inputEval, imp(isInput(node, input)));
-					rel(*this, inverseEvaluate(node, truthTableEntry), IRT_NQ, inputEval, imp(isInput(node, input)));
+					rel(*this, evaluate(node, truthTableEntry), IRT_EQ, inputEval, imp(isInput(node, input)));
 				}
 			}
 
@@ -154,13 +154,13 @@ public:
 		// Constraint: Make sure that the output matches the truth-table.
 		for (int i = 0; i < truthTable.size(); i++)
 		{
-			rel(*this, inverseEvaluate(0, i), IRT_NQ, truthTable[i]);
-			//rel(*this, treeEval[i * treeSize], IRT_EQ, truthTable[i]);
-			//rel(*this, evaluate(0, i), IRT_EQ, truthTable[i]);
+			//rel(*this, inverseEvaluate(0, i), IRT_NQ, truthTable[i]);
+			rel(*this, evaluate(0, i), IRT_EQ, truthTable[i]);
 		}
 
-		// Constraint: Make sure the tree has not more or less inputs than requested.
+		// Constraint: Make sure that there is exactly as many inputs as requested.
 		linear(*this, inputMatch, IRT_EQ, numberOfInputs);
+
 		// Constraint: Make sure there is only one appearance of one input.
 		for (int input = 1; input <= numberOfInputs; input++)
 		{
@@ -172,28 +172,27 @@ public:
 			linear(*this, oneInput, IRT_EQ, 1);
 		}
 
-		// TODO: MINIMIZE THE SIZE (NUMBER OF NOR-GATES)
 		// Tell Gecode how to perform the search.
 		branch(*this, treeNodes, INT_VAR_NONE(), INT_VAL_MIN());
 	}
 
-	/*BoolVar evaluate(int node, int truthNumber)
+	BoolVar evaluate(int node, int truthNumber)
 	{
-		//treeSize * truthTable
+		//this tree has the size (treeSize * truthTable)
 		return treeEval[truthNumber * treeSize + node];
-	}*/
+	}
 
 	BoolVar inverseEvaluate(int node, int truthNumber)
 	{
-		//treeSize * truthTable
-		return treeEvalHelper[truthNumber * treeSize + node];
+		//this tree has the size (treeSize * truthTable)
+		return treeEvalInverse[truthNumber * treeSize + node];
 	}
 
 	BoolVar isInput(int node, int input)
 	{
-		//treeSize * numberOFInputs
 		//since the variable "input" will be 1, 2, 3...etc we need to subtract 1 to get the correct index.
 		return inputMatch[(input-1) * treeSize + node];
+		//this tree has the size (treeSize * numberOFInputs)
 	}
 	
 	// Copy constructor required for Gecode search-algorithm
@@ -207,7 +206,7 @@ public:
 
 		treeNodes.update(*this, share, nor.treeNodes);
 		treeEval.update(*this, share, nor.treeEval);
-		treeEvalHelper.update(*this, share, nor.treeEvalHelper);
+		treeEvalInverse.update(*this, share, nor.treeEvalInverse);
 
 		treeNOR.update(*this, share, nor.treeNOR);
 		treeZero.update(*this, share, nor.treeZero);
