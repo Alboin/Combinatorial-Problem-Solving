@@ -80,83 +80,21 @@ public:
 		}
 		#pragma endregion
 
-		//DUPLICATE: these two constraint are already declared in the big loop.
-		// Constraints: Make sure that the two boolean trees has the correct values.
-		//for (int i = 0; i < treeSize; i++)
-		//{
-			//rel(*this, treeNodes[i], IRT_EQ, -1, treeNOR[i]);
-			//rel(*this, treeNodes[i], IRT_EQ, 0, treeZero[i]);
-		//}
-
 		// Constraint: Make sure that the size-variable has the correct size.
 		linear(*this, treeNOR, IRT_EQ, size);
 
-		#pragma region OLD CONSTRAINTS
-		// LOOPS THROUGH THE TREE
-		/*
-		for (int i = 0; i < treeSize; i++)
+		// Constraint: Make sure that the treeEval and treeEvalHelper matches.
+		/*for (int node = 0; node < treeSize; node++)
 		{
-			// i = current node
-
-			int left = referenceTree[i].first, right = referenceTree[i].second;
-			// left & right replaces i when used.
-
-			// LOOPS THROUGH EVAL-TREES
-			for (int j = 0; j < treeSize * truthTable.size(); j += treeSize)
+			for (int truthNumber = 0; truthNumber < truthTable.size(); truthNumber++)
 			{
-				// j = current eval-tree.
-				// j + i = current node in current eval-tree.
-
-				// If the node is not a leaf.
-				if (i < treeSize / 2)
-				{
-					// If the node is a NOR-gate.
-					rel(*this, treeNodes[i], IRT_EQ, -1, treeNOR[i]);
-					// The treeEvalHelper works like on OR.
-					rel(*this, treeEval[right + j], BOT_OR, treeEval[left + j], treeEvalHelper[i + j]);
-					// Then since "treeEval == !treeEvalHelper" we get a NOR.
-					rel(*this, treeEval[i + j], IRT_NQ, treeEvalHelper[i + j], imp(treeNOR[i]));
-				}
-				// If the node is a leaf.
-				else
-				{
-					// If the node is a leaf it cannot be a NOR-gate.
-					rel(*this, treeNodes[i], IRT_NQ, -1);
-					rel(*this, treeNOR[i], IRT_EQ, 0);
-				}
-
-				// If the node is a 0.
-				rel(*this, treeNodes[i], IRT_EQ, 0, treeZero[i]);
-				rel(*this, treeEval[j + i], IRT_EQ, 0, imp(treeZero[i]));
-
-				// LOOPS THROUGH THE DIFFERENT INPUT-COMBINATIONS
-				for (int nInputCombination = 0; nInputCombination < allPossibleInputs.size(); nInputCombination++)
-				{
-					// k = current inputMatch-tree
-					// k + i = current node in current inputMatch-tree.
-
-					// LOOPS THROUGH THE SELECTED INPUT-COMBINATION
-					for (int input = 0; input < numberOfInputs; input++)
-					{
-						bool inputEval = allPossibleInputs[nInputCombination][input];
-
-						// Making inputMatch true if the tree-node has the same id as the input.
-						rel(*this, treeNodes[i], IRT_EQ, input + 1, inputMatch[(input*treeSize) + i]);
-						
-						// Evaluating the nodes value to the input, if the previous constraint is true.
-						rel(*this, treeEval[j + i], IRT_EQ, inputEval, imp(inputMatch[(input*treeSize) + i]));
-
-					}
-				}
+				rel(*this, evaluate(node, truthNumber), IRT_NQ, inverseEvaluate(node, truthNumber));
 			}
-		}
-		*/
-		#pragma endregion
+		}*/
 
-		//match up the tree with the treeNOR, treeZero and inputMatch.
+		// Loop through the whole tree and apply constraints depending on what kind of node the current one is.
 		for (int node = 0; node < treeSize; node++)
 		{
-
 			#pragma region CONSTRAINTS FOR NODES = -1
 			// Constraint: If the node is a NOR-gate, mark that node as "true" in the treeNOR.
 			rel(*this, treeNodes[node], IRT_EQ, -1, treeNOR[node]);
@@ -166,7 +104,7 @@ public:
 			{
 				// Constraints: If the node is a leaf it cannot be a NOR-gate.
 				rel(*this, treeNodes[node], IRT_NQ, -1);
-				rel(*this, treeNOR[node], IRT_EQ, 0);
+				//rel(*this, treeNOR[node], IRT_EQ, 0); - should not be needed
 			}
 
 			int left = referenceTree[node].first, right = referenceTree[node].second;
@@ -178,7 +116,7 @@ public:
 					// Constraint: The inverseEvaluate works like on OR. If either of the two children left & right are true so are the parent.
 					rel(*this, inverseEvaluate(right, j), BOT_OR, inverseEvaluate(left, j), inverseEvaluate(node, j));
 					// Constraint: Then since "evaluate == !inverseEvaluate" we get a NOR.
-					rel(*this, evaluate(node, j), IRT_NQ, inverseEvaluate(node, j), imp(treeNOR[node]));
+					//rel(*this, evaluate(node, j), IRT_NQ, inverseEvaluate(node, j), imp(treeNOR[node]));
 				}
 			}
 			#pragma endregion
@@ -187,8 +125,9 @@ public:
 			// Constraint: If the node is a 0, mark that node as "true" in the treeZero.
 			rel(*this, treeNodes[node], IRT_EQ, 0, treeZero[node]);
 			// Constraint: If the node is a 0, make sure it evaluates to 0.
-			for(int j = 0; j < truthTable.size(); j++)
-				rel(*this, evaluate(node, j), IRT_EQ, 0, imp(treeZero[node]));
+			for (int j = 0; j < truthTable.size(); j++)
+				rel(*this, inverseEvaluate(node, j), IRT_EQ, 1, imp(treeZero[node]));
+				//rel(*this, evaluate(node, j), IRT_EQ, 0, imp(treeZero[node]));
 			#pragma endregion
 
 			#pragma region CONSTRAINTS FOR NODES = 1, 2, 3...
@@ -204,7 +143,8 @@ public:
 				{
 					bool inputEval = allPossibleInputs[truthTableEntry][input - 1];
 					// Constraint: Make sure that the treeEval gets the correct value from the input-node.
-					rel(*this, evaluate(node, truthTableEntry), IRT_EQ, inputEval, imp(isInput(node, input)));
+					//rel(*this, evaluate(node, truthTableEntry), IRT_EQ, inputEval, imp(isInput(node, input)));
+					rel(*this, inverseEvaluate(node, truthTableEntry), IRT_NQ, inputEval, imp(isInput(node, input)));
 				}
 			}
 
@@ -214,8 +154,9 @@ public:
 		// Constraint: Make sure that the output matches the truth-table.
 		for (int i = 0; i < truthTable.size(); i++)
 		{
+			rel(*this, inverseEvaluate(0, i), IRT_NQ, truthTable[i]);
 			//rel(*this, treeEval[i * treeSize], IRT_EQ, truthTable[i]);
-			rel(*this, evaluate(0, i), IRT_EQ, truthTable[i]);
+			//rel(*this, evaluate(0, i), IRT_EQ, truthTable[i]);
 		}
 
 		// Constraint: Make sure the tree has not more or less inputs than requested.
@@ -236,11 +177,11 @@ public:
 		branch(*this, treeNodes, INT_VAR_NONE(), INT_VAL_MIN());
 	}
 
-	BoolVar evaluate(int node, int truthNumber)
+	/*BoolVar evaluate(int node, int truthNumber)
 	{
 		//treeSize * truthTable
 		return treeEval[truthNumber * treeSize + node];
-	}
+	}*/
 
 	BoolVar inverseEvaluate(int node, int truthNumber)
 	{
@@ -317,7 +258,12 @@ public:
 			output << truthTable[i] << endl;
 			cout << truthTable[i] << endl;
 		}
-		
+
+		/*cout << "Evaluation: ";
+		for (int i = 0; i < truthTable.size(); i++)
+			cout << evaluate(0, i).val() << " ";
+		cout << endl;
+		*/
 		// Print -1 if no solution is found.
 		if (!succeeded)
 		{
@@ -344,6 +290,18 @@ public:
 				cout << "0 0" << endl;
 			}
 		}
+
+		/*for (int node = 0; node < treeSize; node++)
+		{
+			for (int i = 0; i < truthTable.size(); i++)
+			{
+				cout << evaluate(node, i).val() << " ";
+			}
+			cout << endl;
+		}*/
+
+
+
 
 		output.close();
 
