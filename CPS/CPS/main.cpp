@@ -1,7 +1,7 @@
 #include <gecode/int.hh>
 #include <gecode/minimodel.hh>	
 #include <gecode/search.hh>
-//#include <chrono>
+#include <chrono>
 #include <iostream>
 #include <fstream>
 #include <ostream>
@@ -9,7 +9,9 @@
 
 using namespace Gecode;
 using namespace std;
-//using namespace std::chrono;
+using namespace std::chrono;
+
+high_resolution_clock::time_point start_time;
 
 class NORproblem : public Space {
 protected:
@@ -26,6 +28,8 @@ protected:
 	vector<pair<int,int> > referenceTree;
 	vector<vector<int> > allPossibleInputs;
 	vector<int> truthTable;
+
+	IntVar size;
 	
 	int maxDepth;
 	int numberOfInputs;
@@ -37,20 +41,12 @@ public:
 	NORproblem(int depth, int inputs, vector<int> truth)
 		:maxDepth(depth), numberOfInputs(inputs), truthTable(truth)
 	{
+		#pragma region Initiation of variables and constants.
 		// Create an array representing a tree where each node can be input, 0 or NOR.
-		int nodeSize = 4;
-
 		for (int i = 0; i <= maxDepth; i++)
 			treeSize += pow(2, i);
 
-		cout << endl << "treeSize: " << treeSize << " truthTable.size(): " << truthTable.size() << " numberOfInputs: " << numberOfInputs << endl;
-		// Debug printing
-		//cout << endl << maxDepth << endl;
-		//cout << numberOfInputs << endl;
-		//for (int i = 0; i < truthTable.size(); i++)
-			//cout << truthTable[i] << endl;
-
-		treeNodes = IntVarArray(*this, treeSize, -1, treeSize);
+		treeNodes = IntVarArray(*this, treeSize, -1, numberOfInputs);
 		treeEval = BoolVarArray(*this, treeSize * truthTable.size(), 0, 1);
 		treeEvalHelper = BoolVarArray(*this, treeSize * truthTable.size(), 0, 1);
 		
@@ -60,12 +56,14 @@ public:
 
 		// A boolean tree for each input variable.
 		inputMatch = BoolVarArray(*this, treeSize * numberOfInputs, 0, 1);
+
+		// A int for counting the number of NOR-gates in the tree.
+		size = IntVar(*this, 0, treeSize);
 		
 		// Create an array where the cildren of each node in the tree can be found.
 		for (int i = 0; i < treeSize; i++)
 			referenceTree.push_back(make_pair((i*2) + 1, (i*2) + 2));
 
-		cout << "hit1" << endl;
 
 		// Create a 2-dimensional vector where the second dimension is the input variables and
 		// the first is one combination of values for those inputs.
@@ -80,19 +78,22 @@ public:
 			}
 			allPossibleInputs.push_back(tempVec);
 		}
+		#pragma endregion
 
-		cout << "hit2" << endl;
+		//DUPLICATE: these two constraint are already declared in the big loop.
+		// Constraints: Make sure that the two boolean trees has the correct values.
+		//for (int i = 0; i < treeSize; i++)
+		//{
+			//rel(*this, treeNodes[i], IRT_EQ, -1, treeNOR[i]);
+			//rel(*this, treeNodes[i], IRT_EQ, 0, treeZero[i]);
+		//}
 
-		// Make sure that the two boolean trees has the correct values.
-		for (int i = 0; i < treeNodes.size(); i++)
-		{
-			rel(*this, treeNodes[i], IRT_EQ, -1, treeNOR[i]);
-			rel(*this, treeNodes[i], IRT_EQ, 0, treeZero[i]);
-		}
+		// Constraint: Make sure that the size-variable has the correct size.
+		linear(*this, treeNOR, IRT_EQ, size);
 
-		cout << "hit3" << endl;
-
+		#pragma region OLD CONSTRAINTS
 		// LOOPS THROUGH THE TREE
+		/*
 		for (int i = 0; i < treeSize; i++)
 		{
 			// i = current node
@@ -149,97 +150,109 @@ public:
 				}
 			}
 		}
+		*/
+		#pragma endregion
 
-
-		// Make sure that the tree evaluates correct.
-		// Loop through all nodes in the tree.
-		/*for (int i = 0; i < treeSize; i++)
+		//match up the tree with the treeNOR, treeZero and inputMatch.
+		for (int node = 0; node < treeSize; node++)
 		{
-			int left = referenceTree[i].first, right = referenceTree[i].second;
-			// Loop through all input combinations.
-			for (int j = 0; j < treeEval.size() - i; j += treeSize)
+
+			#pragma region CONSTRAINTS FOR NODES = -1
+			// Constraint: If the node is a NOR-gate, mark that node as "true" in the treeNOR.
+			rel(*this, treeNodes[node], IRT_EQ, -1, treeNOR[node]);
+
+			// If the node is a leaf.
+			if (node >= treeSize / 2)
 			{
-				cout << "hit31";
-
-				// If the node is not a leaf.
-				if (i <= treeSize / 2)
-				{
-					// If the node is a NOR-gate.
-					rel(*this, treeNodes[i], IRT_EQ, -1, treeNOR[i]);
-					// The treeEvalHelper works like on OR.
-					rel(*this, treeEval[j + right], BOT_OR, treeEval[j + left], treeEvalHelper[i + j]);
-					// Then since "treeEval == !treeEvalHelper" we get a NOR.
-					rel(*this, treeEval[i + j], IRT_NQ, treeEvalHelper[i + j], imp(treeNOR[i]));
-				}
-				// If the node is a leaf.
-				else
-				{
-					// If the node is a leaf it cannot be a NOR-gate.
-					rel(*this, treeNodes[i], IRT_NQ, -1);
-				}
-
-
-				
-				
-				cout << "hit32";
-				
-				// If the node is an input.
-				// For selected node, loop through all inputs in selected input combination.
-				for (int nInputCombination = 0; nInputCombination < allPossibleInputs.size(); nInputCombination++)
-				{
-					for (int k = 0; k < numberOfInputs; k++)
-					{
-						cout << "1";
-						bool inputEval = allPossibleInputs[nInputCombination][k];
-						// Making inputMatch true if the tree-node has the same id as the input.
-						cout << "2";
-						rel(*this, treeNodes[i], IRT_EQ, k + 1, inputMatch[(k*treeSize) + i]);
-						cout << "3";
-						// Evaluating the nodes value to the input, if the previous constraint is true.
-						rel(*this, treeEval[j + i], IRT_EQ, inputEval, imp(inputMatch[(i*treeSize) + k]));
-						cout << "4";
-
-					}
-				}
-				cout << "hit33";
-
-				// If the node is a 0.
-				rel(*this, treeNodes[i], IRT_EQ, 0, treeZero[i]);
-				rel(*this, treeEval[j + i], IRT_EQ, 0, imp(treeZero[i]));
-				
+				// Constraints: If the node is a leaf it cannot be a NOR-gate.
+				rel(*this, treeNodes[node], IRT_NQ, -1);
+				rel(*this, treeNOR[node], IRT_EQ, 0);
 			}
-		}*/
+
+			int left = referenceTree[node].first, right = referenceTree[node].second;
+			for (int j = 0; j < truthTable.size(); j++)
+			{
+				// If the node is not a leaf.
+				if (node < treeSize / 2)
+				{
+					// Constraint: The inverseEvaluate works like on OR. If either of the two children left & right are true so are the parent.
+					rel(*this, inverseEvaluate(right, j), BOT_OR, inverseEvaluate(left, j), inverseEvaluate(node, j));
+					// Constraint: Then since "evaluate == !inverseEvaluate" we get a NOR.
+					rel(*this, evaluate(node, j), IRT_NQ, inverseEvaluate(node, j), imp(treeNOR[node]));
+				}
+			}
+			#pragma endregion
+
+			#pragma region CONSTRAINTS FOR NODES = 0
+			// Constraint: If the node is a 0, mark that node as "true" in the treeZero.
+			rel(*this, treeNodes[node], IRT_EQ, 0, treeZero[node]);
+			// Constraint: If the node is a 0, make sure it evaluates to 0.
+			for(int j = 0; j < truthTable.size(); j++)
+				rel(*this, evaluate(node, j), IRT_EQ, 0, imp(treeZero[node]));
+			#pragma endregion
+
+			#pragma region CONSTRAINTS FOR NODES = 1, 2, 3...
+			// Constraint: Make sure that the tree inputMatch get the correct values through the function "isInput()".
+			for (int input = 1; input <= numberOfInputs; input++)
+			{
+				rel(*this, treeNodes[node], IRT_EQ, input, isInput(node, input));
+			}
+
+			for (int truthTableEntry = 0; truthTableEntry < truthTable.size(); truthTableEntry++)
+			{
+				for (int input = 1; input <= numberOfInputs; input++)
+				{
+					bool inputEval = allPossibleInputs[truthTableEntry][input - 1];
+					// Constraint: Make sure that the treeEval gets the correct value from the input-node.
+					rel(*this, evaluate(node, truthTableEntry), IRT_EQ, inputEval, imp(isInput(node, input)));
+				}
+			}
+
+			#pragma endregion
+		}
 		
-		cout << "hit4" << endl;
-		// Make sure that the output matches the truth-table.
+		// Constraint: Make sure that the output matches the truth-table.
 		for (int i = 0; i < truthTable.size(); i++)
 		{
-			rel(*this, treeEval[i * treeSize], IRT_EQ, truthTable[i]);
+			//rel(*this, treeEval[i * treeSize], IRT_EQ, truthTable[i]);
+			rel(*this, evaluate(0, i), IRT_EQ, truthTable[i]);
 		}
-		cout << "hit5";
-		//TODO
-		// Measure the tree-size.
 
-		// Make sure the tree has not more or less inputs than requested.
-		/*BoolVarArgs nonInputs(treeSize * 2);
-		for (int i = 0; i < treeSize * 2; i++)
+		// Constraint: Make sure the tree has not more or less inputs than requested.
+		linear(*this, inputMatch, IRT_EQ, numberOfInputs);
+		// Constraint: Make sure there is only one appearance of one input.
+		for (int input = 1; input <= numberOfInputs; input++)
 		{
-			nonInputs[(i*2)] = treeNOR[i];
-			nonInputs[(i*2)+1] = treeZero[i];
+			BoolVarArgs oneInput(treeSize);
+			for (int node = 0; node < treeSize; node++)
+			{
+				oneInput[node] = isInput(node, input);
+			}
+			linear(*this, oneInput, IRT_EQ, 1);
 		}
-		linear(*this, nonInputs, IRT_EQ, treeSize - numberOfInputs);
-		*/
-		//TODO
-		// Add branches for all the variables neccessary.
 
 		// TODO: MINIMIZE THE SIZE (NUMBER OF NOR-GATES)
 		// Tell Gecode how to perform the search.
 		branch(*this, treeNodes, INT_VAR_NONE(), INT_VAL_MIN());
-		/*branch(*this, treeEval, INT_VAR_NONE(), INT_VAL_MIN());
-		branch(*this, treeEvalHelper, INT_VAR_NONE(), INT_VAL_MIN());
-		branch(*this, treeNOR, INT_VAR_NONE(), INT_VAL_MIN());
-		branch(*this, treeZero, INT_VAR_NONE(), INT_VAL_MIN());
-		branch(*this, inputMatch, INT_VAR_NONE(), INT_VAL_MIN());*/
+	}
+
+	BoolVar evaluate(int node, int truthNumber)
+	{
+		//treeSize * truthTable
+		return treeEval[truthNumber * treeSize + node];
+	}
+
+	BoolVar inverseEvaluate(int node, int truthNumber)
+	{
+		//treeSize * truthTable
+		return treeEvalHelper[truthNumber * treeSize + node];
+	}
+
+	BoolVar isInput(int node, int input)
+	{
+		//treeSize * numberOFInputs
+		//since the variable "input" will be 1, 2, 3...etc we need to subtract 1 to get the correct index.
+		return inputMatch[(input-1) * treeSize + node];
 	}
 	
 	// Copy constructor required for Gecode search-algorithm
@@ -247,6 +260,10 @@ public:
 		: Space(share, nor), maxDepth(nor.maxDepth), numberOfInputs(nor.numberOfInputs), treeSize(nor.treeSize),
 		referenceTree(nor.referenceTree), allPossibleInputs(nor.allPossibleInputs), truthTable(nor.truthTable)
 	{
+		//Abort program if a search is performed during more than 100 seconds.
+		auto duration = duration_cast<microseconds>(high_resolution_clock::now() - start_time).count();
+		float durationInSeconds = duration / 1000000.0;
+
 		treeNodes.update(*this, share, nor.treeNodes);
 		treeEval.update(*this, share, nor.treeEval);
 		treeEvalHelper.update(*this, share, nor.treeEvalHelper);
@@ -256,10 +273,9 @@ public:
 
 		inputMatch.update(*this, share, nor.inputMatch);
 
-		cout << endl << "copying! treesize: " << treeSize;
-		//cout << treeEval.size() << endl;
-		//cout << treeNOR.size() << endl;
-		//cout << treeNodes.size() << endl;
+		size.update(*this, share, nor.size);
+
+		cout << endl << "copying!" << durationInSeconds;
 	}
 
 	virtual Space* copy(bool share)
@@ -267,7 +283,14 @@ public:
 		return new NORproblem(share, *this);
 	}
 
-	void print()
+	virtual void constrain(const Space& _m)
+	{
+		const NORproblem& m = static_cast<const NORproblem&>(_m);
+
+		rel(*this, size, IRT_LQ, m.size);
+	}
+
+	void print(bool succeeded)
 	{
 		ofstream output;
 		stringstream temp;
@@ -285,24 +308,44 @@ public:
 		output << maxDepth << endl;
 		output << numberOfInputs << endl;
 
+		cout << endl << endl;
+		cout << maxDepth << endl;
+		cout << numberOfInputs << endl;
+
 		for (int i = 0; i < truthTable.size(); i++)
 		{
 			output << truthTable[i] << endl;
+			cout << truthTable[i] << endl;
 		}
+		
+		// Print -1 if no solution is found.
+		if (!succeeded)
+		{
+			cout << -1 << endl;
+			output << -1 << endl;
+			return;
+		}
+		// Print the number of NOR-gates and then all the nodes in the tree.
+		cout << size.val() << endl;
+		output << size.val() << endl;
 
-		//print number of nor-gates here, or -1 if failed.
 		for (int i = 0; i < treeSize; i++)
 		{
+			cout << i + 1 << " " << treeNodes[i].val() << " ";
 			output << i + 1 << " " << treeNodes[i].val() << " ";
-			if (treeNodes[i].val() > 0)
-				output << referenceTree[i].first << " " << referenceTree[i].second << endl;
+			if (treeNodes[i].val() < 0)
+			{
+				output << referenceTree[i].first + 1 << " " << referenceTree[i].second + 1 << endl;
+				cout << referenceTree[i].first + 1 << " " << referenceTree[i].second + 1 << endl;
+			}
 			else
+			{
 				output << "0 0" << endl;
+				cout << "0 0" << endl;
+			}
 		}
-		output << "treeSize: " << treeSize;
 
 		output.close();
-		cout << "hejja";
 
 	}
 };
@@ -311,43 +354,13 @@ public:
 
 int main()
 {
-	// TODO: Where should I put these?
-	//high_resolution_clock::time_point start_time = high_resolution_clock::now();
-	//auto duration = duration_cast<microseconds>(high_resolution_clock::now() - start_time).count();
-	//float durationInSeconds = duration / 1000000.0;
-	
-	//Testing
-	int numberOfInputs = 3;
-	vector<vector< int> > allPossibleInputs;
-
-	for (int count = 0; count < pow(2, numberOfInputs); count++)
-	{
-		vector<int> tempVec;
-		for (int offset = numberOfInputs - 1; offset >= 0; offset--)
-		{
-			int input = ((count & (1 << offset)) >> offset);
-			tempVec.push_back(input);
-		}
-		allPossibleInputs.push_back(tempVec);
-	}
-
-	for (int i = 0; i < allPossibleInputs.size(); i++)
-	{
-		for (int j = 0; j < numberOfInputs; j++)
-		{
-			cout << allPossibleInputs[i][j];
-		}
-		cout << endl;
-	}
-	//end of testing
-
-	
 	// Read an input-file.
 	cout << "Enter input filename: ";
 
 	string filename;
 	//cin >> filename;
-	filename = "nlsp_2_2_6.inp"; // used during debugging
+	filename = "nlsp_2_2_8.inp"; // used during debugging
+	cout << filename;
 
 	ifstream inputFile;
 	inputFile.open(filename);
@@ -378,12 +391,21 @@ int main()
 
 		NORproblem *nor = new NORproblem(maxDepth, nInputs, truthTable);
 
-		DFS<NORproblem> d(nor);
+		start_time = high_resolution_clock::now();
+		Gecode::Search::Stop::time(5000);
+
+		BAB<NORproblem> d(nor);
+
+		// If no solution is found.
+		if (!d.next())
+			nor->print(false);
 		delete nor;
 
 		while (NORproblem *temp = d.next())
 		{
-			temp->print();
+			temp->print(true);
+			char dummy;
+			cin >> dummy;
 			delete temp;
 		}
 	}
