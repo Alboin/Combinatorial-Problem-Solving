@@ -1,4 +1,5 @@
-﻿  main.cpp
+﻿cl : Command line warning D9028: minimal rebuild failure, reverting to normal build
+  main.cpp
 c:\users\albin\documents\github\combinatorial-problem-solving\cps\deps\include\gecode\support\exception.hpp(46): warning C4275: non dll-interface class 'std::exception' used as base for dll-interface class 'Gecode::Exception'
   c:\program files (x86)\microsoft visual studio 14.0\vc\include\vcruntime_exception.h(43): note: see declaration of 'std::exception'
   c:\users\albin\documents\github\combinatorial-problem-solving\cps\deps\include\gecode\support\exception.hpp(46): note: see declaration of 'Gecode::Exception'
@@ -23,8 +24,8 @@ c:\users\albin\documents\github\combinatorial-problem-solving\cps\deps\include\g
 c:\users\albin\documents\github\combinatorial-problem-solving\cps\cps\main.cpp(47): warning C4244: '+=': conversion from 'double' to 'int', possible loss of data
 c:\users\albin\documents\github\combinatorial-problem-solving\cps\cps\main.cpp(50): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
 c:\users\albin\documents\github\combinatorial-problem-solving\cps\cps\main.cpp(51): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
-c:\users\albin\documents\github\combinatorial-problem-solving\cps\cps\main.cpp(145): warning C4800: 'int': forcing value to bool 'true' or 'false' (performance warning)
-c:\users\albin\documents\github\combinatorial-problem-solving\cps\cps\main.cpp(205): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-c:\users\albin\documents\github\combinatorial-problem-solving\cps\cps\main.cpp(240): warning C4244: '+=': conversion from 'double' to 'int', possible loss of data
+c:\users\albin\documents\github\combinatorial-problem-solving\cps\cps\main.cpp(135): warning C4800: 'int': forcing value to bool 'true' or 'false' (performance warning)
+c:\users\albin\documents\github\combinatorial-problem-solving\cps\cps\main.cpp(194): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+c:\users\albin\documents\github\combinatorial-problem-solving\cps\cps\main.cpp(229): warning C4244: '+=': conversion from 'double' to 'int', possible loss of data
   CPS.vcxproj -> C:\Users\Albin\Documents\GitHub\Combinatorial-Problem-Solving\CPS\x64\Debug\CPS.exe
   CPS.vcxproj -> C:\Users\Albin\Documents\GitHub\Combinatorial-Problem-Solving\CPS\x64\Debug\CPS.pdb (Partial PDB)

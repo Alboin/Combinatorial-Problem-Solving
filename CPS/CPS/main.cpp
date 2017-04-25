@@ -41,6 +41,10 @@ public:
 	NORproblem(int depth, int inputs, vector<int> truth)
 		:maxDepth(depth), numberOfInputs(inputs), truthTable(truth)
 	{
+
+		Gecode::Search::TimeStop::TimeStop(5000);
+
+
 		#pragma region Initiation of variables and constants.
 		// Create an array representing a tree where each node can be input, 0 or NOR.
 		for (int i = 0; i <= maxDepth; i++)
@@ -83,15 +87,6 @@ public:
 		// Constraint: Make sure that the size-variable has the correct size.
 		linear(*this, treeNOR, IRT_EQ, size);
 
-		// Constraint: Make sure that the treeEval and treeEvalHelper matches.
-		/*for (int node = 0; node < treeSize; node++)
-		{
-			for (int truthNumber = 0; truthNumber < truthTable.size(); truthNumber++)
-			{
-				rel(*this, evaluate(node, truthNumber), IRT_NQ, inverseEvaluate(node, truthNumber));
-			}
-		}*/
-
 		// Loop through the whole tree and apply constraints depending on what kind of node the current one is.
 		for (int node = 0; node < treeSize; node++)
 		{
@@ -104,7 +99,6 @@ public:
 			{
 				// Constraints: If the node is a leaf it cannot be a NOR-gate.
 				rel(*this, treeNodes[node], IRT_NQ, -1);
-				//rel(*this, treeNOR[node], IRT_EQ, 0); - should not be needed
 			}
 
 			int left = referenceTree[node].first, right = referenceTree[node].second;
@@ -154,7 +148,6 @@ public:
 		// Constraint: Make sure that the output matches the truth-table.
 		for (int i = 0; i < truthTable.size(); i++)
 		{
-			//rel(*this, inverseEvaluate(0, i), IRT_NQ, truthTable[i]);
 			rel(*this, evaluate(0, i), IRT_EQ, truthTable[i]);
 		}
 
@@ -204,6 +197,11 @@ public:
 		auto duration = duration_cast<microseconds>(high_resolution_clock::now() - start_time).count();
 		float durationInSeconds = duration / 1000000.0;
 
+		if (durationInSeconds > 100)
+		{
+			exit(EXIT_FAILURE);
+		}
+
 		treeNodes.update(*this, share, nor.treeNodes);
 		treeEval.update(*this, share, nor.treeEval);
 		treeEvalInverse.update(*this, share, nor.treeEvalInverse);
@@ -215,7 +213,7 @@ public:
 
 		size.update(*this, share, nor.size);
 
-		cout << endl << "copying!" << durationInSeconds;
+		cout << endl << "Branching! Duration: " << durationInSeconds;
 	}
 
 	virtual Space* copy(bool share)
@@ -227,7 +225,7 @@ public:
 	{
 		const NORproblem& m = static_cast<const NORproblem&>(_m);
 
-		rel(*this, size, IRT_LQ, m.size);
+		rel(*this, size, IRT_LE, m.size.val());
 	}
 
 	void print(bool succeeded)
@@ -239,7 +237,7 @@ public:
 		for (int i = 0; i < truthTable.size(); i++)
 			decimalRepresentation += truthTable[i] * pow(2, i);
 
-		temp << "nlsp_" << maxDepth << "_" << numberOfInputs << "_" << decimalRepresentation << ".out";
+		temp << "output/nlsp_" << maxDepth << "_" << numberOfInputs << "_" << decimalRepresentation << ".out";
 		string filename;
 		temp >> filename;
 
@@ -258,11 +256,6 @@ public:
 			cout << truthTable[i] << endl;
 		}
 
-		/*cout << "Evaluation: ";
-		for (int i = 0; i < truthTable.size(); i++)
-			cout << evaluate(0, i).val() << " ";
-		cout << endl;
-		*/
 		// Print -1 if no solution is found.
 		if (!succeeded)
 		{
@@ -290,92 +283,137 @@ public:
 			}
 		}
 
-		/*for (int node = 0; node < treeSize; node++)
-		{
-			for (int i = 0; i < truthTable.size(); i++)
-			{
-				cout << evaluate(node, i).val() << " ";
-			}
-			cout << endl;
-		}*/
-
-
-
-
 		output.close();
 
 	}
 };
 
-
+//A function for getting all filenames within a folder, ending with .inp.
+// taken from http://stackoverflow.com/questions/612097/how-can-i-get-the-list-of-files-in-a-directory-using-c-or-c
+// and modified to only search for .inp-files.
+vector<string> getAllFilenames(string folderName)
+{
+	vector<string> filenames;
+	string searchPath = folderName + "/*.inp";
+	WIN32_FIND_DATA fd;
+	HANDLE hFind = ::FindFirstFile(searchPath.c_str(), &fd);
+	if (hFind != INVALID_HANDLE_VALUE)
+	{
+		do {
+			if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+			{
+				filenames.push_back(fd.cFileName);
+			}
+		} while (::FindNextFile(hFind, &fd));
+		::FindClose(hFind);
+	}
+	return filenames;
+}
 
 int main()
 {
-	// Read an input-file.
-	cout << "Enter input filename: ";
-
-	string filename;
-	//cin >> filename;
-	filename = "nlsp_2_2_8.inp"; // used during debugging
-	cout << filename;
-
-	ifstream inputFile;
-	inputFile.open(filename);
-	stringstream ss;
-
-	string line;
-	if (inputFile.is_open())
-	{
-		while (getline(inputFile, line))
-		{
-			ss << line;
-			ss << " ";
-		}
-		inputFile.close();
-	}
+	start:
+		cout << endl << "Do you wish to:" << endl << "1. Read a single file in the folder \"input\"";
+		cout << endl << "2. Read all the files in the folder \"input\"" << endl;
+		cout << "Answer: ";
 	
-	int maxDepth, nInputs;
-	ss >> maxDepth;
-	ss >> nInputs;
+	int answer;
+	cin >> answer;
 
-	int truthTableEntry;
-	vector<int> truthTable;
-	while (ss >> truthTableEntry)
-		truthTable.push_back(truthTableEntry);
+	if (answer != 1 && answer != 2)
+	{
+		goto start;
+	}
 
-	// Create a NORproblem from the input-file info and solve it.
-	try {
+	vector<string> allFileNames;
+	string filename;
 
-		NORproblem *nor = new NORproblem(maxDepth, nInputs, truthTable);
-
-		start_time = high_resolution_clock::now();
-		Gecode::Search::Stop::time(5000);
-
-		BAB<NORproblem> d(nor);
-
-		// If no solution is found.
-		if (!d.next())
-			nor->print(false);
-		delete nor;
-
-		while (NORproblem *temp = d.next())
+	// Read an single input-file.
+	if (answer == 1)
+	{
+		cout << endl << "Enter input filename: "; 
+		cin >> filename;
+		string temp = "input/";
+		allFileNames.push_back(temp.append(filename));
+	}
+	//Get the names of all input-files in a specific directory.
+	else if (answer == 2)
+	{
+		allFileNames = getAllFilenames("input/");
+		
+		for (int i = 0; i < allFileNames.size(); i++)
 		{
-			temp->print(true);
+			string temp = "input/";
+			allFileNames[i] = temp.append(allFileNames[i]);
+			cout << allFileNames[i] << endl;
+		}
+	}
+
+
+	for (int i = 0; i < allFileNames.size(); i++)
+	{
+		filename = allFileNames[i];
+		ifstream inputFile;
+		inputFile.open(filename);
+		stringstream ss;
+
+		string line;
+		if (inputFile.is_open())
+		{
+			while (getline(inputFile, line))
+			{
+				ss << line;
+				ss << " ";
+			}
+			inputFile.close();
+		}
+
+		// Get the nlsp-information from the file.
+		int maxDepth, nInputs;
+		ss >> maxDepth;
+		ss >> nInputs;
+
+		int truthTableEntry;
+		vector<int> truthTable;
+		while (ss >> truthTableEntry)
+			truthTable.push_back(truthTableEntry);
+
+		// Create a NORproblem from the input-file info and solve it.
+		try {
+
+			NORproblem *nor = new NORproblem(maxDepth, nInputs, truthTable);
+
+			// Sets the start-time of the solver, if 100 seconds are passed the program terminates.
+			start_time = high_resolution_clock::now();
+
+			BAB<NORproblem> d(nor);
+
+			//Print the solution to a file.
+			bool foundSolution = false;
+			NORproblem *temp;
+			while (temp = d.next())
+			{
+				foundSolution = true;
+				temp->print(true);
+				delete temp;
+			}
+			if (!foundSolution)
+				nor->print(false);
+			delete nor;
+
+		}
+		catch (Exception e)
+		{
+			cerr << endl << "Gecode: " << e.what() << endl;
 			char dummy;
 			cin >> dummy;
-			delete temp;
+			return 1;
 		}
 	}
-	catch (Exception e)
-	{
-		cerr << endl << "Gecode: " << e.what() << endl;
-		char dummy;
-		cin >> dummy;
-		return 1;
-	}
 		
-	char dummy;
-	cin >> dummy;
+	cout << endl << endl << "Program finished reading and solving " << allFileNames.size() << " problems in!";
+
+	goto start;
 
 	return 0;
 }
