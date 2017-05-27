@@ -1,0 +1,9 @@
+﻿  main.cpp
+main.obj : error LNK2019: unresolved external symbol "public: __thiscall IloEnv::IloEnv(void)" (??0IloEnv@@QAE@XZ) referenced in function _main
+C:\Users\Albin\Documents\GitHub\Combinatorial-Problem-Solving\LP\deps\lib\cplex1271.lib : warning LNK4272: library machine type 'x64' conflicts with target machine type 'X86'
+C:\Users\Albin\Documents\GitHub\Combinatorial-Problem-Solving\LP\deps\lib\concert.lib : warning LNK4272: library machine type 'x64' conflicts with target machine type 'X86'
+C:\Users\Albin\Documents\GitHub\Combinatorial-Problem-Solving\LP\deps\lib\ilocplex.lib : warning LNK4272: library machine type 'x64' conflicts with target machine type 'X86'
+C:\Users\Albin\Documents\GitHub\Combinatorial-Problem-Solving\LP\deps\lib\x64_windows_vs2015\stat_mda\cplex1271.lib : warning LNK4272: library machine type 'x64' conflicts with target machine type 'X86'
+C:\Users\Albin\Documents\GitHub\Combinatorial-Problem-Solving\LP\deps\lib\x64_windows_vs2015\stat_mda\ilocplex.lib : warning LNK4272: library machine type 'x64' conflicts with target machine type 'X86'
+C:\Users\Albin\Documents\GitHub\Combinatorial-Problem-Solving\LP\deps\lib\x64_windows_vs2015\stat_mda\concert.lib : warning LNK4272: library machine type 'x64' conflicts with target machine type 'X86'
+C:\Users\Albin\Documents\GitHub\Combinatorial-Problem-Solving\LP\Debug\LP.exe : fatal error LNK1120: 1 unresolved externals
